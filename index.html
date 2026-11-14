@@ -107,9 +107,9 @@
   <h1>Gerador de QR Code</h1>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="mudarAba('texto')">Link / Texto</button>
-    <button class="tab-btn" onclick="mudarAba('wifi')">Wi-Fi</button>
-    <button class="tab-btn" onclick="mudarAba('whats')">WhatsApp</button>
+    <button class="tab-btn active" onclick="mudarAba('texto', this)">Link / Texto</button>
+    <button class="tab-btn" onclick="mudarAba('wifi', this)">Wi-Fi</button>
+    <button class="tab-btn" onclick="mudarAba('whats', this)">WhatsApp</button>
   </div>
 
   <!-- Aba Texto / Link -->
@@ -162,11 +162,11 @@
 <script>
   let abaAtual = 'texto';
 
-  function mudarAba(aba) {
+  function mudarAba(aba, botao) {
     abaAtual = aba;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    event.target.classList.add('active');
+    botao.classList.add('active');
     document.getElementById('aba-' + aba).classList.add('active');
   }
 
@@ -213,13 +213,17 @@
 
     setTimeout(() => {
       const qrCanvas = tempDiv.querySelector('canvas');
+      if (!qrCanvas) return;
+
       const finalCanvas = document.createElement('canvas');
       finalCanvas.width = tamanho;
       finalCanvas.height = tamanho;
       const ctx = finalCanvas.getContext('2d');
       ctx.drawImage(qrCanvas, 0, 0);
 
-      const logoFile = document.getElementById('logoInput').files[0];
+      const logoInput = document.getElementById('logoInput');
+      const logoFile = logoInput.files ? logoInput.files[0] : null;
+
       if (logoFile) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -240,11 +244,12 @@
         resultadoDiv.appendChild(finalCanvas);
         document.getElementById('btnBaixar').style.display = 'block';
       }
-    }, 100);
+    }, 150);
   }
 
   function baixarQR() {
     const canvas = document.querySelector('#resultado canvas');
+    if (!canvas) return;
     const link = document.createElement('a');
     link.href = canvas.toDataURL('image/png');
     link.download = `qrcode-${abaAtual}.png`;
@@ -253,5 +258,5 @@
 </script>
 
 </body>
-</html>
+  </html>
   
