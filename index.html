@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerador de QR Code Pro</title>
-  <script src="https://cloudflare.com"></script>
+  <title>Gerador de QR Code</title>
+  <script src="https://jsdelivr.net"></script>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -66,6 +66,18 @@
       gap: 4px;
     }
     input[type="color"] { padding: 2px; height: 38px; cursor: pointer; }
+    .btn-clear {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      margin-top: -6px;
+      margin-bottom: 6px;
+      display: none;
+    }
     .btn-main {
       width: 100%;
       padding: 12px;
@@ -78,7 +90,6 @@
       cursor: pointer;
       margin-top: 5px;
     }
-    .btn-main:hover { background-color: #1d4ed8; }
     .btn-download {
       width: 100%;
       padding: 12px;
@@ -92,13 +103,12 @@
       display: none;
       margin-top: 8px;
     }
-    .btn-download:hover { background-color: #15803d; }
     #resultado {
       display: flex;
       justify-content: center;
       margin: 1.5rem 0;
     }
-    canvas { max-width: 100%; height: auto; border-radius: 8px; }
+    canvas { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e5e7eb; }
   </style>
 </head>
 <body>
@@ -112,12 +122,10 @@
     <button class="tab-btn" onclick="mudarAba('whats', this)">WhatsApp</button>
   </div>
 
-  <!-- Aba Texto / Link -->
   <div id="aba-texto" class="tab-content active">
     <input type="text" id="input-texto" placeholder="Cole seu link, texto ou código Pix...">
   </div>
 
-  <!-- Aba Wi-Fi -->
   <div id="aba-wifi" class="tab-content">
     <input type="text" id="wifi-ssid" placeholder="Nome da rede Wi-Fi (SSID)">
     <input type="text" id="wifi-senha" placeholder="Senha do Wi-Fi">
@@ -128,13 +136,11 @@
     </select>
   </div>
 
-  <!-- Aba WhatsApp -->
   <div id="aba-whats" class="tab-content">
     <input type="text" id="whats-num" placeholder="Número com DDD (ex: 5519999999999)">
     <input type="text" id="whats-msg" placeholder="Mensagem automática (opcional)">
   </div>
 
-  <!-- Personalização -->
   <div class="options-grid">
     <label>Cor do Código:
       <input type="color" id="corFrente" value="#000000">
@@ -149,18 +155,22 @@
       </select>
     </label>
     <label>Logo no centro (opcional):
-      <input type="file" id="logoInput" accept="image/*" style="padding: 6px; font-size: 0.8rem;">
+      <input type="file" id="logoInput" accept="image/*" onchange="verificarLogo()" style="padding: 6px; font-size: 0.8rem;">
+      <button type="button" id="btnRemoverLogo" class="btn-clear" onclick="limparLogo()">Remover logo</button>
     </label>
   </div>
 
   <button class="btn-main" onclick="gerarQR()">Gerar QR Code</button>
-  <div id="resultado"></div>
-  <div id="temp-qr" style="display:none;"></div>
+  <div id="resultado">
+    <canvas id="qr-canvas"></canvas>
+  </div>
   <button id="btnBaixar" class="btn-download" onclick="baixarQR()">Baixar PNG</button>
 </div>
 
 <script>
   let abaAtual = 'texto';
+  const canvas = document.getElementById('qr-canvas');
+  canvas.style.display = 'none';
 
   function mudarAba(aba, botao) {
     abaAtual = aba;
@@ -168,6 +178,20 @@
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     botao.classList.add('active');
     document.getElementById('aba-' + aba).classList.add('active');
+  }
+
+  function verificarLogo() {
+    const logoInput = document.getElementById('logoInput');
+    document.getElementById('btnRemoverLogo').style.display = logoInput.files.length > 0 ? 'inline-block' : 'none';
+  }
+
+  function limparLogo() {
+    document.getElementById('logoInput').value = '';
+    document.getElementById('btnRemoverLogo').style.display = 'none';
+  }
+
+  function paraUTF8(str) {
+    return unescape(encodeURIComponent(str));
   }
 
   function montarConteudo() {
@@ -190,6 +214,11 @@
   }
 
   function gerarQR() {
+    if (typeof QRious === 'undefined') {
+      alert('Erro ao carregar o gerador. Verifique sua conexão com a internet e recarregue a página.');
+      return;
+    }
+
     const conteudo = montarConteudo();
     if (!conteudo) {
       alert('Preencha os dados obrigatórios primeiro!');
@@ -197,59 +226,41 @@
     }
 
     const tamanho = parseInt(document.getElementById('tamanho').value);
-    const tempDiv = document.getElementById('temp-qr');
-    const resultadoDiv = document.getElementById('resultado');
-    tempDiv.innerHTML = '';
-    resultadoDiv.innerHTML = '';
+    const corFrente = document.getElementById('corFrente').value;
+    const corFundo = document.getElementById('corFundo').value;
 
-    new QRCode(tempDiv, {
-      text: conteudo,
-      width: tamanho,
-      height: tamanho,
-      colorDark: document.getElementById('corFrente').value,
-      colorLight: document.getElementById('corFundo').value,
-      correctLevel: QRCode.CorrectLevel.H
+    new QRious({
+      element: canvas,
+      value: paraUTF8(conteudo),
+      size: tamanho,
+      foreground: corFrente,
+      background: corFundo,
+      level: 'H'
     });
 
-    setTimeout(() => {
-      const qrCanvas = tempDiv.querySelector('canvas');
-      if (!qrCanvas) return;
+    canvas.style.display = 'block';
+    document.getElementById('btnBaixar').style.display = 'block';
 
-      const finalCanvas = document.createElement('canvas');
-      finalCanvas.width = tamanho;
-      finalCanvas.height = tamanho;
-      const ctx = finalCanvas.getContext('2d');
-      ctx.drawImage(qrCanvas, 0, 0);
-
-      const logoInput = document.getElementById('logoInput');
-      const logoFile = logoInput.files ? logoInput.files[0] : null;
-
-      if (logoFile) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = new Image();
-          img.onload = function() {
-            const logoSize = tamanho * 0.22;
-            const pos = (tamanho - logoSize) / 2;
-            ctx.fillStyle = document.getElementById('corFundo').value;
-            ctx.fillRect(pos - 6, pos - 6, logoSize + 12, logoSize + 12);
-            ctx.drawImage(img, pos, pos, logoSize, logoSize);
-            resultadoDiv.appendChild(finalCanvas);
-            document.getElementById('btnBaixar').style.display = 'block';
-          };
-          img.src = e.target.result;
+    const logoInput = document.getElementById('logoInput');
+    if (logoInput.files.length > 0) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const ctx = canvas.getContext('2d');
+          const logoSize = tamanho * 0.22;
+          const pos = (tamanho - logoSize) / 2;
+          ctx.fillStyle = corFundo;
+          ctx.fillRect(pos - 6, pos - 6, logoSize + 12, logoSize + 12);
+          ctx.drawImage(img, pos, pos, logoSize, logoSize);
         };
-        reader.readAsDataURL(logoFile);
-      } else {
-        resultadoDiv.appendChild(finalCanvas);
-        document.getElementById('btnBaixar').style.display = 'block';
-      }
-    }, 150);
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(logoInput.files.item(0));
+    }
   }
 
   function baixarQR() {
-    const canvas = document.querySelector('#resultado canvas');
-    if (!canvas) return;
     const link = document.createElement('a');
     link.href = canvas.toDataURL('image/png');
     link.download = `qrcode-${abaAtual}.png`;
@@ -258,5 +269,4 @@
 </script>
 
 </body>
-  </html>
-  
+</html>
